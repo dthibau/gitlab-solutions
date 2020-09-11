@@ -17,6 +17,7 @@ stages:
 build:
   stage: build
   script:
+    - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
     - 'java -version'
     - './mvnw $MAVEN_OPTS package'
 
