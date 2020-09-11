@@ -17,6 +17,7 @@ stages:
 build:
   stage: build
   script:
+    - 'java -version'
     - './mvnw $MAVEN_OPTS package'
 
 
