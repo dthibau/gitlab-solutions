@@ -11,7 +11,7 @@ cache:
   paths:
     - .m2/repository
 
-stages
+stages:
   - build
   
 build:
