@@ -12,13 +12,30 @@ cache:
     - .m2/repository
 
 stages:
-  - build
+  - Build
+  - Test
+  - Integration
   
 build:
-  stage: build
+  stage: Build
   script:
     - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
-    - 'java -version'
     - './mvnw $MAVEN_OPTS package'
 
-
+integration-test:
+  stage: Test
+  script:
+    - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
+    - './mvnw integration-test'
+    
+analysis:
+  stage: Test
+  script:
+    - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
+    - './mvnw sonar:sonar'
+    
+deploy_integration:
+  stage: Integration
+  script:
+    - 'echo DEPLOY INTEGRATION'
+    
