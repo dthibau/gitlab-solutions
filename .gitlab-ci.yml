@@ -1,9 +1,66 @@
-include:
-  - project: 'myteam/templates'
-    ref: master
-    file: '/maven.yml'
-
 
 variables:
-  ARTEFACT: application/target/*.jar
-  INTEGRATION_URL: /home/dthibau/Formations/GitLab/MyWork/Serveurs/
+  MAVEN_OPTS: "-Dhttps.protocols=TLSv1.2 -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true"
+  # As of Maven 3.3.0 instead of this you may define these options in `.mvn/maven.config` so the same config is used
+  # when running from the command line.
+  # `installAtEnd` and `deployAtEnd` are only effective with recent version of the corresponding plugins.
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version -DinstallAtEnd=true -DdeployAtEnd=true"
+  INTEGRATION_URL: "~"
+
+# Cache downloaded dependencies and plugins between builds.
+# To keep cache across branches add 'key: "$CI_JOB_NAME"'
+cache:
+  paths:
+    - .m2/repository
+
+stages:
+  - Build
+  - Test
+  - Build-docker
+  
+build:
+  stage: Build
+  tags:
+    - docker
+  script:
+    - './mvnw $MAVEN_OPTS package'
+  artifacts:
+    paths:
+      - application/target/*.jar
+      - application/src/main/docker/Dockerfile
+
+integration-test:
+  stage: Test
+  tags:
+    - docker
+  except: 
+    refs:
+      - master 
+  script:
+    - './mvnw integration-test'
+   
+
+analysis:
+  stage: Test
+  tags:
+    - docker
+  except: 
+    refs:
+      - master
+  script:
+    - './mvnw verify sonar:sonar'
+    
+build-docker:
+  stage: Build-docker
+  dependencies:
+    - build
+  variables:
+    GIT_STRATEGY: none
+  script: 
+    - echo "$DOCKER_LOGIN $DOCKER_PASSWORD"
+    - cp application/target/*.jar .
+    - cp application/src/main/docker/Dockerfile .
+    - docker login -u $DOCKER_LOGIN -p $DOCKER_PASSWORD 
+    - docker build -t dthibau/gitlab-multi-module .
+    - docker push dthibau/gitlab-multi-module
+    
