@@ -32,7 +32,7 @@ analysis:
   stage: Test
   script:
     - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
-    - './mvnw sonar:sonar'
+    - './mvnw verify sonar:sonar'
     
 deploy_integration:
   stage: Integration
