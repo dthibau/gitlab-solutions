@@ -78,6 +78,8 @@ classes/
 .gradle/
 /build/
 
+/builds/
+
 ######################
 # Package Files
 ######################

@@ -21,6 +21,9 @@ build:
   script:
     - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
     - './mvnw $MAVEN_OPTS package'
+  artifacts:
+    paths:
+      - application/target/*.jar
 
 integration-test:
   stage: Test
@@ -36,6 +39,11 @@ analysis:
     
 deploy_integration:
   stage: Integration
+  variables:
+    GIT_STRATEGY: none
   script:
     - 'echo DEPLOY INTEGRATION'
+    - 'cp application/target/*.jar /home/dthibau/Formations/GitLab/MyWork/Serveurs/app.jar'
+  dependencies:
+    - build
     
