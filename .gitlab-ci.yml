@@ -1,5 +1,5 @@
 include:
-  - project: 'myteam/gabarit'
+  - project: 'myteam/templates'
     ref: master
     file: '/maven.yml'
 
