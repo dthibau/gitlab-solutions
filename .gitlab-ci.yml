@@ -4,6 +4,7 @@ variables:
   # when running from the command line.
   # `installAtEnd` and `deployAtEnd` are only effective with recent version of the corresponding plugins.
   MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version -DinstallAtEnd=true -DdeployAtEnd=true"
+  INTEGRATION_URL: /home/dthibau/Formations/GitLab/MyWork/Serveurs/ 
 
 # Cache downloaded dependencies and plugins between builds.
 # To keep cache across branches add 'key: "$CI_JOB_NAME"'
@@ -18,6 +19,9 @@ stages:
   
 build:
   stage: Build
+  except: 
+    refs:
+      - master
   script:
     - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
     - './mvnw $MAVEN_OPTS package'
@@ -27,23 +31,34 @@ build:
 
 integration-test:
   stage: Test
+  except: 
+    refs:
+      - master 
   script:
     - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
     - './mvnw integration-test'
-    
+   
+
 analysis:
   stage: Test
+  except: 
+    refs:
+      - master
   script:
     - 'export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/'
     - './mvnw verify sonar:sonar'
+
     
 deploy_integration:
   stage: Integration
+  except: 
+    refs:
+      - master
   variables:
     GIT_STRATEGY: none
   script:
     - 'echo DEPLOY INTEGRATION'
-    - 'cp application/target/*.jar /home/dthibau/Formations/GitLab/MyWork/Serveurs/app.jar'
+    - 'cp application/target/*.jar $INTEGRATION_URL/app.jar'
   dependencies:
     - build
     
