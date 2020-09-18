@@ -67,7 +67,10 @@ build-docker:
     
 deploy_review:
   stage: Deploy
-  script: echo "Deploy a review app"
+  script: 
+    - echo "Deploy a review app"
+    - echo "$KUBE_URL $KUBE_CONFIG"
+    - kubectl apply -f multi-module-deployment.yml
   environment:
     name: review/$CI_COMMIT_REF_NAME
     url: https://$CI_ENVIRONMENT_SLUG.formation.org
