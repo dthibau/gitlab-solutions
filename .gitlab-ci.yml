@@ -69,7 +69,9 @@ deploy_review:
   stage: Deploy
   script: 
     - echo "Deploy a review app"
-    - echo "$KUBE_URL $KUBE_CONFIG"
+    - echo "$KUBE_URL $KUBE_NAMESPACE"
+    - sed -i "s/#NS#/$KUBE_NAMESPACE/g" multi-module-deployment.yml
+    - cat multi-module-deployment.yml
     - kubectl apply -f multi-module-deployment.yml
   environment:
     name: review/$CI_COMMIT_REF_NAME
