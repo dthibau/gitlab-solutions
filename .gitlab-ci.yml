@@ -17,6 +17,7 @@ stages:
   - Build
   - Test
   - Build-docker
+  - Deploy
   
 build:
   stage: Build
@@ -64,3 +65,32 @@ build-docker:
     - docker build -t dthibau/gitlab-multi-module .
     - docker push dthibau/gitlab-multi-module
     
+deploy_review:
+  stage: Deploy
+  script: echo "Deploy a review app"
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: https://$CI_ENVIRONMENT_SLUG.formation.org
+  only:
+    - branches
+  except:
+    - master
+
+deploy_staging:
+  stage: Deploy
+  script: echo "Deploy to staging server"
+  environment:
+    name: staging
+    url: https://staging.example.com
+  only:
+  - master
+
+deploy_prod:
+  stage: Deploy
+  script: echo "Deploy to production server"
+  environment:
+    name: production
+    url: https://example.com
+  when: manual
+  only:
+  - master
