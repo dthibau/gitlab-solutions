@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multi-module
+  namespace: #NS#
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      name: multi-module
+  template:
+    metadata:
+      labels:
+        name: multi-module
+    spec:
+      containers:
+      - name: multi-module
+        env:
+          - name: SPRING_PROFILES_ACTIVE
+            value: prod
+        image: dthibau/gitlab-multi-module
+        imagePullPolicy: Always
+
+
