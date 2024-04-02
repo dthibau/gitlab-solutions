@@ -20,7 +20,8 @@ stages:
 build:
   script:
     - echo "Building"
-    - ./mvnw $MAVEN_OPTS -Dmaven.test.failure.ignore=true package
+    - ./mvnw $MAVEN_OPTS -Dmaven.test.failure.ignore=true clean package 
+    - ./mvnw -s settings.xml deploy
     - cat application/target/site/jacoco/index.html
   coverage: /Total.*?([0-9]{1,3})%/
   artifacts:
