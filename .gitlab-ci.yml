@@ -2,8 +2,8 @@ include:
   - project: 'formation/gabarit'
     ref: main
     file: '/maven-template.yml'
-
-
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
 variables:
   ARTEFACT: application/target/*.jar
   INTEGRATION_URL: /home/gitlab-runner
@@ -11,6 +11,7 @@ variables:
 
 stages:
   - build
+  - test
   - analyse
   - deploy_artefact
   - deploiement
@@ -29,6 +30,7 @@ build:
       junit: 
         - application/target/surefire-reports/*.xml  
         - library/target/surefire-reports/*.xml  
+
 
 build-image:
   image: docker
