@@ -15,6 +15,15 @@ stages:
   - deploy_artefact
   - deploiement
 
+  
+build:
+  artifacts:
+    paths:
+      - $ARTEFACT  
+    reports:
+      junit: 
+        - application/target/surefire-reports/*.xml  
+        - library/target/surefire-reports/*.xml  
 
 build-image:
   image: docker
