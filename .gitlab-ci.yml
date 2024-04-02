@@ -4,33 +4,42 @@ include:
     file: '/maven-template.yml'
   - template: Security/SAST.gitlab-ci.yml
   - template: Security/Secret-Detection.gitlab-ci.yml
+
 variables:
   ARTEFACT: application/target/*.jar
   INTEGRATION_URL: /home/gitlab-runner
 
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^v.*/        # ← pipeline sur tag
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
 
 stages:
   - build
   - test
   - analyse
   - deploy_artefact
+  - release
   - deploiement
 
-  
 build:
   script:
     - echo "Building"
-    - ./mvnw $MAVEN_OPTS -Dmaven.test.failure.ignore=true clean package 
+    - ./mvnw $MAVEN_OPTS -Dmaven.test.failure.ignore=true clean package
     - ./mvnw -s settings.xml deploy
     - cat application/target/site/jacoco/index.html
   coverage: /Total.*?([0-9]{1,3})%/
   artifacts:
     paths:
-      - $ARTEFACT  
+      - $ARTEFACT
     reports:
-      junit: 
-        - application/target/surefire-reports/*.xml  
-        - library/target/surefire-reports/*.xml  
+      junit:
+        - application/target/surefire-reports/*.xml
+        - library/target/surefire-reports/*.xml
 
 
 build-image:
@@ -39,59 +48,86 @@ build-image:
   script:
     - mv $ARTEFACT .
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH .  # ← tag = branche
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH
+    # Sur main → tag avec le nom de branche
+    - |
+     if [ -n "$CI_COMMIT_TAG" ]; then
+        IMAGE_TAG=$CI_COMMIT_TAG
+      elif [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
+        IMAGE_TAG=$(echo $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME | tr '/' '-')
+      else
+        IMAGE_TAG=$(echo $CI_COMMIT_BRANCH | tr '/' '-')
+      fi
+    - docker build -t $CI_REGISTRY_IMAGE:$IMAGE_TAG .
+    - docker push $CI_REGISTRY_IMAGE:$IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH   # ← sur merge dans main
+    - if: $CI_COMMIT_TAG =~ /^v.*/                  # ← sur création de tag
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" # Sur push d'un MR
 
 deploy_review:
   stage: deploiement
   image: docker
-  variables:
-    PORT: 8080
   script:
-    - echo "Deploy a review app"
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY  # ← auth GitLab
-    - docker stop $CI_COMMIT_BRANCH || true
-    - docker rm $CI_COMMIT_BRANCH || true
-    - docker run -d -p :8080 --name $CI_COMMIT_BRANCH $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH  # ← registre GitLab
-    - docker port $CI_COMMIT_BRANCH 8080 | cut -d ":" -f2
-    - PORT=$(docker port $CI_COMMIT_BRANCH 8080 | cut -d ":" -f2)
+    - |
+      if [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
+        CONTAINER_NAME=$(echo $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME | tr '/' '-')
+      else
+        CONTAINER_NAME=$(echo $CI_COMMIT_BRANCH | tr '/' '-')
+      fi
+    - echo "Deploy a review app $CONTAINER_NAME"
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker stop $CONTAINER_NAME || true
+    - docker rm $CONTAINER_NAME || true
+    - docker run -d -p :8080 --name $CONTAINER_NAME $CI_REGISTRY_IMAGE:$CONTAINER_NAME
+    - PORT=$(docker port $CONTAINER_NAME 8080 | cut -d ":" -f2)
     - echo "http://localhost:$PORT"
   environment:
     name: review/$CI_COMMIT_REF_NAME
-    # url supprimée ← le vrai port reste lisible dans les logs du job
-    # url: http://localhost:$PORT
-  only:
-    - branches
-  except:
-    - main
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+release_job:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - echo "Creating release v0.$CI_PIPELINE_IID"
+  release:
+    tag_name: 'v0.$CI_PIPELINE_IID'
+    description: 'v0.$CI_PIPELINE_IID'
+    ref: '$CI_COMMIT_SHA'
 
 deploy_staging:
   stage: deploiement
   image: docker
   script:
     - echo "Deploy to staging server"
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY  # ← auth GitLab
-    - docker stop $CI_COMMIT_BRANCH || true
-    - docker rm $CI_COMMIT_BRANCH || true
-    - docker run -d -p 7979:8080 --name $CI_COMMIT_BRANCH $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH  # ← registre GitLab
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker stop staging || true
+    - docker rm staging || true
+    - docker run -d -p 7979:8080 --name staging $CI_REGISTRY_IMAGE:$CI_DEFAULT_BRANCH
   environment:
     name: staging
     url: http://localhost:7979
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 deploy_prod:
   stage: deploiement
   image: docker
   script:
-    - echo "Deploy to production server"
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY  # ← auth GitLab
-    - docker stop $CI_COMMIT_BRANCH || true
-    - docker rm $CI_COMMIT_BRANCH || true
-    - docker run -d -p 8080:8080 --name $CI_COMMIT_BRANCH $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH  # ← registre GitLab
+    - echo "Deploy to production → $CI_COMMIT_TAG"
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker stop production || true
+    - docker rm production || true
+    - docker run -d -p 8080:8080 --name production $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG  # ← image taguée
   environment:
     name: production
     url: http://localhost:8080
-  when: manual
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v.*/   # ← uniquement sur un tag
+      when: manual                    # ← déclenchement manuel
+
