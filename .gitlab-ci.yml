@@ -7,3 +7,23 @@ include:
 variables:
   ARTEFACT: application/target/*.jar
   INTEGRATION_URL: /home/gitlab-runner
+
+
+
+stages:
+  - build
+  - analyse
+  - deploy_artefact
+  - deploiement
+
+
+build-image:
+  image: docker
+#  services:
+#    - docker:dind  # Utilisation du service Docker-in-Docker (DinD)
+  stage: deploy_artefact
+  script:
+    - mv $ARTEFACT .
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:latest
