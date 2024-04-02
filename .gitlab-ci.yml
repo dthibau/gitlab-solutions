@@ -11,6 +11,10 @@ cache:
 default:
   image: eclipse-temurin:21-jdk
 
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+
 stages:
   - build
   - analyse
@@ -18,6 +22,7 @@ stages:
   
 build:
   stage: build
+  interruptible: true
   script:
     - './mvnw $MAVEN_OPTS clean package'
   artifacts:
@@ -26,20 +31,26 @@ build:
 
 vulnerability:
   stage: analyse
+  interruptible: true
   script:
       - './mvnw -DnvdApiKey=$NVD_API_KEY dependency-check:aggregate'
   dependencies: []
 
 qualité:
   stage: analyse
+  interruptible: true
   script:
     - './mvnw -Dsonar.host.url=http://gitlab-sonar:9000 -Dsonar.token=$SONAR_TOKEN verify sonar:sonar'
   dependencies: []
 
 deploiement:
   stage: deploiement
+  rules: 
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   tags:
     - shell
+  variables:
+    GIT_STRATEGY: none
   script:
     - 'whoami'
     - 'cp application/target/*.jar $INTEGRATION_URL/app.jar'
