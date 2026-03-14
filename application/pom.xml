@@ -3,13 +3,13 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>gs-multi-module-application</artifactId>
+    <artifactId>multi-module-application</artifactId>
     <packaging>jar</packaging>
 
     <parent>
-        <groupId>com.example</groupId>
-        <artifactId>gs-multi-module</artifactId>
-        <version>0.0.3-SNAPSHOT</version>
+        <groupId>org.formation</groupId>
+        <artifactId>multi-module</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
         <relativePath >..</relativePath>
     </parent>
     <build>
@@ -44,8 +44,8 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.example</groupId>
-            <artifactId>gs-multi-module-library</artifactId>
+            <groupId>org.formation</groupId>
+            <artifactId>multi-module-library</artifactId>
             <version>${project.version}</version>
         </dependency>
 
