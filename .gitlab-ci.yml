@@ -15,6 +15,12 @@ stages:
   - deploy_artefact
   - deploiement
 
+vulnerability:
+  stage: analyse
+  interruptible: true
+  script:
+      - echo "Mock vulnerability job"
+  dependencies: []
 
 build-image:
   image: docker
@@ -43,10 +49,29 @@ deploy_review:
     name: review/$CI_COMMIT_REF_NAME
     # url supprimée ← le vrai port reste lisible dans les logs du job
     # url: http://localhost:$PORT
+    on_stop: stop_review
   only:
     - branches
   except:
     - main
+
+stop_review:
+  stage: deploiement
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Remove review app"
+    - docker stop $CI_COMMIT_BRANCH || true
+    - docker rm $CI_COMMIT_BRANCH || true
+  when: manual
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
+  only:
+    - branches
+  except:
+    - main
+
 
 deploy_staging:
   stage: deploiement
@@ -54,9 +79,9 @@ deploy_staging:
   script:
     - echo "Deploy to staging server"
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY  # ← auth GitLab
-    - docker stop $CI_COMMIT_BRANCH || true
-    - docker rm $CI_COMMIT_BRANCH || true
-    - docker run -d -p 7979:8080 --name $CI_COMMIT_BRANCH $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH  # ← registre GitLab
+    - docker stop staging || true
+    - docker rm staging || true
+    - docker run -d -p 7979:8080 --name staging $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH  # ← registre GitLab
   environment:
     name: staging
     url: http://localhost:7979
@@ -69,9 +94,9 @@ deploy_prod:
   script:
     - echo "Deploy to production server"
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY  # ← auth GitLab
-    - docker stop $CI_COMMIT_BRANCH || true
-    - docker rm $CI_COMMIT_BRANCH || true
-    - docker run -d -p 8080:8080 --name $CI_COMMIT_BRANCH $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH  # ← registre GitLab
+    - docker stop prod || true
+    - docker rm prod || true
+    - docker run -d -p 8080:8080 --name prod $CI_REGISTRY_IMAGE:$CI_COMMIT_BRANCH  # ← registre GitLab
   environment:
     name: production
     url: http://localhost:8080
